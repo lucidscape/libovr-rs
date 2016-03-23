@@ -1,0 +1,10 @@
+[package]
+name = "libovr"
+version = "0.1.0"
+authors = [
+    "Lucidscape Technologies Inc.",
+    "Braden Evans <braden@lucidscape.com>"
+]
+build = "build.rs"
+
+[dependencies]
