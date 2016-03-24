@@ -1,4 +1,5 @@
 # Rust bindings for LibOVR (Oculus Rift SDK)
 
-## Building
-Currently requires the 64-bit rust msvc build
+## Current Limitations
+- Requires the 64-bit rust msvc build
+- OpenGL helpers only

@@ -6,8 +6,12 @@ extern {}
 #[allow(non_upper_case_globals)]
 pub mod libovr_sys;
 
+#[allow(non_camel_case_types)]
+#[allow(non_snake_case)]
+#[allow(non_upper_case_globals)]
+pub mod libovr_gl_sys;
+
 use std::mem;
-// use std::ptr;
 
 use libovr_sys::*;
 
@@ -177,6 +181,24 @@ impl Session {
         }
     }
 
+    pub fn create_swap_texture_set_gl(
+        &self,
+        format: libovr_gl_sys::GLuint,
+        width: i32,
+        height: i32
+    ) -> *mut ovrTexture {
+        unsafe {
+            let mut texture_set = mem::uninitialized();
+            libovr_gl_sys::ovr_CreateSwapTextureSetGL(
+                self.session as libovr_gl_sys::ovrHmd,
+                format,
+                width,
+                height,
+                &mut texture_set);
+            texture_set as *mut ovrTexture
+        }
+    }
+
     pub fn submit_frame(
         &self,
         frame_index:        i64,
@@ -260,6 +282,28 @@ pub fn calc_eye_poses(head_pose: ovrPosef, view_offset: [ovrVector3f; 2]) -> [ov
     }
 }
 
+pub struct DetectResult {
+    result: ovrDetectResult
+}
+
+impl DetectResult {
+    pub fn is_oculus_service_running(&self) -> bool {
+        self.result.IsOculusServiceRunning != 0
+    }
+
+    pub fn is_hmd_connected(&self) -> bool {
+        self.result.IsOculusHMDConnected != 0
+    }
+}
+
+pub fn detect(timeout_ms: i32) -> DetectResult {
+    unsafe {
+        DetectResult {
+            result: ovr_Detect(timeout_ms)
+        }
+    }
+}
+
 
 #[cfg(test)]
 mod tests {
@@ -267,6 +311,10 @@ mod tests {
 
     #[test]
     fn init() {
+        let detect_result = detect(1000);
+        assert!(detect_result.is_oculus_service_running());
+        assert!(detect_result.is_hmd_connected());
+
         initialize().expect("init ok");
 
         create().expect("create hmd");
