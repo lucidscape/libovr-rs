@@ -15,6 +15,9 @@ use std::mem;
 
 use libovr_sys::*;
 
+use std::ffi::CStr;
+use std::borrow::Cow;
+
 #[repr(i32)]
 #[derive(Debug)]
 pub enum OvrError {
@@ -131,6 +134,39 @@ pub enum OvrError {
     RuntimeException           = -7000,
 }
 
+impl std::fmt::Display for OvrError {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        write!(f, "{:?}", self)
+    }
+}
+
+impl std::error::Error for OvrError {
+    fn description(&self) -> &str {
+        match *self {
+            _ => "Unknown error"
+        }
+    }
+}
+
+pub trait HmdDesc {
+    fn product_name(&self) -> Cow<str>;
+    fn manufacturer(&self) -> Cow<str>;
+}
+
+impl HmdDesc for ovrHmdDesc {
+    fn product_name(&self) -> Cow<str> {
+        unsafe {
+            CStr::from_ptr(&self.ProductName as *const i8).to_string_lossy()
+        }
+    }
+
+    fn manufacturer(&self) -> Cow<str> {
+        unsafe {
+            CStr::from_ptr(&self.Manufacturer as *const i8).to_string_lossy()
+        }
+    }
+}
+
 pub struct Session {
     session:    ovrSession
 }
@@ -157,7 +193,7 @@ impl Session {
     // pub fn create_mirror_texture_gl(&self) {}
     // ovr_DestroyMirrorTexture
 
-    pub fn get_dender_desc(&self, eye: ovrEyeType, fov: ovrFovPort) -> ovrEyeRenderDesc {
+    pub fn get_render_desc(&self, eye: ovrEyeType, fov: ovrFovPort) -> ovrEyeRenderDesc {
         unsafe {
             ovr_GetRenderDesc(self.session, eye, fov)
         }
@@ -317,7 +353,13 @@ mod tests {
 
         initialize().expect("init ok");
 
-        create().expect("create hmd");
+        let session = create().expect("create hmd");
+
+        let _desc = session.get_hmd_desc();
+        // println!("--> {} {}", desc.product_name(), desc.manufacturer());
+        // assert!(false);
+
+        // let swap_set = session.create_swap_texture_set_gl(0, 512, 512);
 
         shutdown();
     }
