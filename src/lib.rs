@@ -4,16 +4,16 @@ extern {}
 #[allow(non_camel_case_types)]
 #[allow(non_snake_case)]
 #[allow(non_upper_case_globals)]
-pub mod libovr_sys;
+pub mod libovr_ffi;
 
 #[allow(non_camel_case_types)]
 #[allow(non_snake_case)]
 #[allow(non_upper_case_globals)]
-pub mod libovr_gl_sys;
+pub mod libovr_gl_ffi;
 
 use std::mem;
 
-use libovr_sys::*;
+use libovr_ffi::*;
 
 use std::ffi::CStr;
 use std::borrow::Cow;
@@ -167,6 +167,29 @@ impl HmdDesc for ovrHmdDesc {
     }
 }
 
+pub enum GraphicsApi {
+    OpenGL,
+    D3D
+}
+
+pub struct GlSwapTextureSet {
+    set:    *mut ovrSwapTextureSet,
+}
+
+impl GlSwapTextureSet {
+    pub fn texture_count(&self) -> usize {
+        unsafe {
+            (*self.set).TextureCount as usize
+        }
+    }
+
+    pub fn current_index(&self) -> usize {
+        unsafe {
+            (*self.set).CurrentIndex as usize
+        }
+    }
+}
+
 pub struct Session {
     session:    ovrSession
 }
@@ -189,9 +212,6 @@ impl Session {
             (size.w as usize, size.h as usize)
         }
     }
-
-    // pub fn create_mirror_texture_gl(&self) {}
-    // ovr_DestroyMirrorTexture
 
     pub fn get_render_desc(&self, eye: ovrEyeType, fov: ovrFovPort) -> ovrEyeRenderDesc {
         unsafe {
@@ -219,19 +239,26 @@ impl Session {
 
     pub fn create_swap_texture_set_gl(
         &self,
-        format: libovr_gl_sys::GLuint,
+        format: libovr_gl_ffi::GLuint,
         width: i32,
         height: i32
-    ) -> *mut ovrTexture {
+    ) -> Result<GlSwapTextureSet, OvrError> {
         unsafe {
             let mut texture_set = mem::uninitialized();
-            libovr_gl_sys::ovr_CreateSwapTextureSetGL(
-                self.session as libovr_gl_sys::ovrHmd,
+            let result = libovr_gl_ffi::ovr_CreateSwapTextureSetGL(
+                self.session as libovr_gl_ffi::ovrHmd,
                 format,
                 width,
                 height,
                 &mut texture_set);
-            texture_set as *mut ovrTexture
+
+            if result >= 0 {
+                Ok(GlSwapTextureSet {
+                    set:    texture_set as *mut ovrSwapTextureSet,
+                })
+            } else {
+                Err(mem::transmute(result))
+            }
         }
     }
 
