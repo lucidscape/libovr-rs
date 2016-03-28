@@ -12,6 +12,7 @@ pub mod libovr_ffi;
 pub mod libovr_gl_ffi;
 
 use std::mem;
+use std::ptr;
 
 use libovr_ffi::*;
 
@@ -134,6 +135,11 @@ pub enum OvrError {
     RuntimeException           = -7000,
 }
 
+pub const EYES: [ovrEyeType; 2] = [
+    Enum_ovrEyeType_::ovrEye_Left,
+    Enum_ovrEyeType_::ovrEye_Right
+];
+
 impl std::fmt::Display for OvrError {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
         write!(f, "{:?}", self)
@@ -172,6 +178,25 @@ pub enum GraphicsApi {
     D3D
 }
 
+pub struct Texture {
+    texture:    *mut libovr_gl_ffi::ovrGLTexture
+}
+
+impl Texture {
+    pub fn dimensions(&self) -> (usize, usize) {
+        unsafe {
+            let size = (*(*self.texture).OGL()).Header.TextureSize;
+            (size.w as usize, size.h as usize)
+        }
+    }
+
+    pub fn gl_handle(&self) -> u32 {
+        unsafe {
+            (*(*self.texture).OGL()).TexId
+        }
+    }
+}
+
 pub struct GlSwapTextureSet {
     set:    *mut ovrSwapTextureSet,
 }
@@ -188,6 +213,34 @@ impl GlSwapTextureSet {
             (*self.set).CurrentIndex as usize
         }
     }
+
+    /// Advance the index of the current texture.
+    pub fn next_index(&mut self) -> usize {
+        unsafe {
+            (*self.set).CurrentIndex = ((*self.set).CurrentIndex + 1) % ((*self.set).TextureCount);
+            (*self.set).CurrentIndex as usize
+        }
+    }
+
+    /// Get the texture the current index.
+    pub fn current_texture(&self) -> Texture {
+        self.get_texture(self.current_index())
+    }
+
+    /// Get the texture for the given index.
+    pub fn get_texture(&self, index: usize) -> Texture {
+        unsafe {
+            assert!(index < self.texture_count());
+            let textures = (*self.set).Textures as *mut libovr_gl_ffi::ovrGLTexture;
+            Texture {
+                texture: textures.offset(index as isize)
+            }
+        }
+    }
+
+    pub fn raw(&self) -> *mut ovrSwapTextureSet {
+        self.set
+    }
 }
 
 pub struct Session {
@@ -203,8 +256,8 @@ impl Session {
 
     pub fn get_fov_texture_size(
         &self,
-        eye: ovrEyeType,
-        fov_port: ovrFovPort,
+        eye:        ovrEyeType,
+        fov_port:   ovrFovPort,
         pixels_per_display_pixel: f32
     ) -> (usize, usize) {
         unsafe {
@@ -240,7 +293,7 @@ impl Session {
     pub fn create_swap_texture_set_gl(
         &self,
         format: libovr_gl_ffi::GLuint,
-        width: i32,
+        width:  i32,
         height: i32
     ) -> Result<GlSwapTextureSet, OvrError> {
         unsafe {
@@ -262,14 +315,41 @@ impl Session {
         }
     }
 
+    pub fn create_mirror_texture_gl(
+        &self,
+        format: libovr_gl_ffi::GLuint,
+        width:  i32,
+        height: i32
+    ) -> Texture {
+        unsafe {
+            let mut texture: &mut libovr_gl_ffi::ovrGLTexture = mem::uninitialized();
+            libovr_gl_ffi::ovr_CreateMirrorTextureGL(
+                self.session as libovr_gl_ffi::ovrHmd,
+                format,
+                width,
+                height,
+                mem::transmute(&mut texture));
+
+            Texture {
+                texture: texture as *mut libovr_gl_ffi::ovrGLTexture
+            }
+        }
+    }
+
     pub fn submit_frame(
         &self,
         frame_index:        i64,
-        view_scale_desc:    &ovrViewScaleDesc,
+        view_scale_desc:    Option<&ovrViewScaleDesc>,
         layer_header:       *const *const ovrLayerHeader,
         layer_count:        usize
     ) -> Result<(), OvrError> {
         unsafe {
+            let view_scale_desc =
+                match view_scale_desc {
+                    Some(desc) => desc as *const ovrViewScaleDesc,
+                    None => ptr::null()
+                };
+
             let result = ovr_SubmitFrame(self.session, frame_index, view_scale_desc, layer_header,
                                          layer_count as u32);
             if result >= 0 {
