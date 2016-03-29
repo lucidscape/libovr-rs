@@ -4,136 +4,44 @@ extern {}
 #[allow(non_camel_case_types)]
 #[allow(non_snake_case)]
 #[allow(non_upper_case_globals)]
-pub mod libovr_ffi;
+pub mod ffi;
 
 #[allow(non_camel_case_types)]
 #[allow(non_snake_case)]
 #[allow(non_upper_case_globals)]
-pub mod libovr_gl_ffi;
+pub mod ffi_gl;
 
 use std::mem;
 use std::ptr;
 
-use libovr_ffi::*;
+use ffi::*;
 
 use std::ffi::CStr;
 use std::borrow::Cow;
 
-#[repr(i32)]
 #[derive(Debug)]
-pub enum OvrError {
-    /* General errors */
-    /// Failure to allocate memory.
-    MemoryAllocationFailure    = -1000,
-    /// Failure to create a socket.
-    SocketCreationFailure      = -1001,
-    /// Invalid ovrSession parameter provided.
-    InvalidSession             = -1002,
-    /// The operation timed out.
-    Timeout                    = -1003,
-    /// The system or component has not been initialized.
-    NotInitialized             = -1004,
-    /// Invalid parameter provided. See error info or log for details.
-    InvalidParameter           = -1005,
-    /// Generic service error. See error info or log for details.
-    ServiceError               = -1006,
-    /// The given HMD doesn't exist.
-    NoHmd                      = -1007,
-
-    /* Audio error range, reserved for Audio errors. */
-    /// First Audio error.
-    AudioReservedBegin         = -2000,
-    /// Failure to find the specified audio device.
-    AudioDeviceNotFound        = -2001,
-    /// Generic COM error.
-    AudioComError              = -2002,
-    /// Last Audio error.
-    AudioReservedEnd           = -2999,
-
-    /* Initialization errors. */
-    /// Generic initialization error.
-    Initialize                 = -3000,
-    /// Couldn't load LibOVRRT.
-    LibLoad                    = -3001,
-    /// LibOVRRT version incompatibility.
-    LibVersion                 = -3002,
-    /// Couldn't connect to the OVR Service.
-    ServiceConnection          = -3003,
-    /// OVR Service version incompatibility.
-    ServiceVersion             = -3004,
-    /// The operating system version is incompatible.
-    IncompatibleOS             = -3005,
-    /// Unable to initialize the HMD display.
-    DisplayInit                = -3006,
-    /// Unable to start the server. Is it already running?
-    ServerStart                = -3007,
-    /// Attempting to re-initialize with a different version.
-    Reinitialization           = -3008,
-    /// Chosen rendering adapters between client and service do not match
-    MismatchedAdapters         = -3009,
-    /// Calling application has leaked resources
-    LeakingResources           = -3010,
-    /// Client version too old to connect to service
-    ClientVersion              = -3011,
-    /// The operating system is out of date.
-    OutOfDateOS                = -3012,
-    /// The graphics driver is out of date.
-    OutOfDateGfxDriver         = -3013,
-    /// The graphics hardware is not supported
-    IncompatibleGPU            = -3014,
-    /// No valid VR display system found.
-    NoValidVRDisplaySystem     = -3015,
-
-    /* Hardware errors */
-    /// Headset has no bundle adjustment data.
-    InvalidBundleAdjustment    = -4000,
-    /// The USB hub cannot handle the camera frame bandwidth.
-    USBBandwidth               = -4001,
-    /// The USB camera is not enumerating at the correct device speed.
-    USBEnumeratedSpeed         = -4002,
-    /// Unable to communicate with the image sensor.
-    ImageSensorCommError       = -4003,
-    /// We use this to report various tracker issues that don't fit in an easily classifiable bucket.
-    GeneralTrackerFailure      = -4004,
-    /// A more than acceptable number of frames are coming back truncated.
-    ExcessiveFrameTruncation   = -4005,
-    /// A more than acceptable number of frames have been skipped.
-    ExcessiveFrameSkipping     = -4006,
-    /// The tracker is not receiving the sync signal (cable disconnected?)
-    SyncDisconnected           = -4007,
-    /// Failed to read memory from the tracker
-    TrackerMemoryReadFailure   = -4008,
-    /// Failed to write memory from the tracker
-    TrackerMemoryWriteFailure  = -4009,
-    /// Timed out waiting for a camera frame
-    TrackerFrameTimeout        = -4010,
-    /// Truncated frame returned from tracker
-    TrackerTruncatedFrame      = -4011,
-    /// The HMD Firmware is out of date and is unacceptable.
-    HMDFirmwareMismatch        = -4100,
-    /// The Tracker Firmware is out of date and is unacceptable.
-    TrackerFirmwareMismatch    = -4101,
-    /// A bootloader HMD is detected by the service
-    BootloaderDeviceDetected   = -4102,
-    /// The tracker calibration is missing or incorrect
-    TrackerCalibrationError    = -4103,
-    /// The controller firmware is out of date and is unacceptable
-    ControllerFirmwareMismatch = -4104,
-
-    /* Synchronization errors */
-    /// Requested async work not yet complete.
-    Incomplete                 = -5000,
-    /// Requested async work was abandoned and result is incomplete.
-    Abandoned                  = -5001,
-
-    /* Rendering errors */
-    /// In the event of a system-wide graphics reset or cable unplug this is returned to the app
-    DisplayLost                = -6000,
-
-    /* Fatal errors */
-    /// A runtime exception occurred. The application is required to shutdown LibOVR and re-initialize it before this error state will be cleared.
-    RuntimeException           = -7000,
+pub struct OvrError {
+    error:  ovrErrorType
 }
+
+impl From<ovrErrorType> for OvrError {
+    fn from(e: ovrErrorType) -> OvrError {
+        OvrError {
+            error:  e
+        }
+    }
+}
+
+impl From<i32> for OvrError {
+    fn from(e: i32) -> OvrError {
+        unsafe {
+            OvrError {
+                error:  mem::transmute(e)
+            }
+        }
+    }
+}
+
 
 pub const EYES: [ovrEyeType; 2] = [
     Enum_ovrEyeType_::ovrEye_Left,
@@ -150,6 +58,24 @@ impl std::error::Error for OvrError {
     fn description(&self) -> &str {
         match *self {
             _ => "Unknown error"
+        }
+    }
+}
+
+/// Mirror texture description
+pub struct MirrorTextureDesc {
+    desc:   ovrMirrorTextureDesc
+}
+
+impl MirrorTextureDesc {
+    pub fn new(format: ovrTextureFormat, width: usize, height: usize, flags: u32) -> Self {
+        let mut desc    = ovrMirrorTextureDesc::default();
+        desc.Format     = format;
+        desc.Width      = width as i32;
+        desc.Height     = height as i32;
+        desc.MiscFlags  = flags;
+        MirrorTextureDesc {
+            desc: desc
         }
     }
 }
@@ -178,71 +104,127 @@ pub enum GraphicsApi {
     D3D
 }
 
-pub struct Texture {
-    texture:    *mut libovr_gl_ffi::ovrGLTexture
+pub struct GlMirrorTexture {
+    session:    ovrSession,
+    texture:    ovrMirrorTexture,
 }
 
-impl Texture {
-    pub fn dimensions(&self) -> (usize, usize) {
+impl GlMirrorTexture {
+    /// Get the OpenGL texture handle for this texture.
+    pub fn get_texture_gl(&self) -> u32 {
         unsafe {
-            let size = (*(*self.texture).OGL()).Header.TextureSize;
-            (size.w as usize, size.h as usize)
+            let mut tex_id = 0;
+            ffi_gl::ovr_GetMirrorTextureBufferGL(
+                self.session as ffi_gl::ovrSession,
+                self.texture as ffi_gl::ovrMirrorTexture,
+                &mut tex_id);
+
+            tex_id
+        }
+    }
+}
+
+pub struct TextureSwapChainDesc {
+    desc:   ovrTextureSwapChainDesc
+}
+
+impl TextureSwapChainDesc {
+    pub fn new(
+        tex_type:       ovrTextureType,
+        format:         ovrTextureFormat,
+        array_size:     usize,
+        width:          usize,
+        height:         usize,
+        mip_levels:     usize,
+        sample_count:   usize,
+        static_image:   bool,
+        misc_flags:     u32,
+        bind_flags:     u32
+    ) -> Self {
+        TextureSwapChainDesc {
+            desc: ovrTextureSwapChainDesc {
+                Type:          tex_type,
+                Format:        format,
+                ArraySize:     array_size as i32,
+                Width:         width as i32,
+                Height:        height as i32,
+                MipLevels:     mip_levels as i32,
+                SampleCount:   sample_count as i32,
+                StaticImage:   static_image as ovrBool,
+                MiscFlags:     misc_flags,
+                BindFlags:     bind_flags
+            }
         }
     }
 
-    pub fn gl_handle(&self) -> u32 {
-        unsafe {
-            (*(*self.texture).OGL()).TexId
-        }
+    pub fn width(&self) -> usize {
+        self.desc.Width as usize
     }
+
+    pub fn height(&self) -> usize {
+        self.desc.Height as usize
+    }
+
 }
 
-pub struct GlSwapTextureSet {
-    set:    *mut ovrSwapTextureSet,
+pub struct GlTextureSwapChain {
+    session:    ovrSession,
+    chain:      ovrTextureSwapChain,
 }
 
-impl GlSwapTextureSet {
-    pub fn texture_count(&self) -> usize {
+impl GlTextureSwapChain {
+    pub fn len(&self) -> usize {
         unsafe {
-            (*self.set).TextureCount as usize
+            let mut length = 0;
+            ovr_GetTextureSwapChainLength(self.session, self.chain, &mut length);
+            length as usize
         }
     }
 
     pub fn current_index(&self) -> usize {
         unsafe {
-            (*self.set).CurrentIndex as usize
+            let mut index = 0;
+            ovr_GetTextureSwapChainCurrentIndex(self.session, self.chain, &mut index);
+            index as usize
         }
     }
 
-    /// Advance the index of the current texture.
-    pub fn next_index(&mut self) -> usize {
+    /// Get the OpenGL texture handle for the given texture index.
+    pub fn get_texture_gl(&self, index: usize) -> u32 {
         unsafe {
-            (*self.set).CurrentIndex = ((*self.set).CurrentIndex + 1) % ((*self.set).TextureCount);
-            (*self.set).CurrentIndex as usize
+            let mut tex_id = 0;
+            ffi_gl::ovr_GetTextureSwapChainBufferGL(
+                self.session as ffi_gl::ovrSession,
+                self.chain as ffi_gl::ovrTextureSwapChain,
+                index as i32,
+                &mut tex_id);
+
+            tex_id
         }
     }
 
-    /// Get the texture the current index.
-    pub fn current_texture(&self) -> Texture {
-        self.get_texture(self.current_index())
+    pub fn raw(&self) -> ovrTextureSwapChain {
+        self.chain
     }
 
-    /// Get the texture for the given index.
-    pub fn get_texture(&self, index: usize) -> Texture {
+    pub fn desc(&self) -> TextureSwapChainDesc {
         unsafe {
-            assert!(index < self.texture_count());
-            let textures = (*self.set).Textures as *mut libovr_gl_ffi::ovrGLTexture;
-            Texture {
-                texture: textures.offset(index as isize)
+            let mut desc = mem::zeroed::<ovrTextureSwapChainDesc>();
+            ovr_GetTextureSwapChainDesc(self.session, self.chain, &mut desc);
+            TextureSwapChainDesc {
+                desc:   desc
             }
         }
     }
 
-    pub fn raw(&self) -> *mut ovrSwapTextureSet {
-        self.set
+    pub fn commit(&self) {
+        unsafe {
+            ovr_CommitTextureSwapChain(self.session, self.chain);
+        }
     }
 }
 
+/// Session is the main interaction point for the api.
 pub struct Session {
     session:    ovrSession
 }
@@ -290,48 +272,73 @@ impl Session {
         }
     }
 
-    pub fn create_swap_texture_set_gl(
+    /// Returns (eye poses, sensor sample time)
+    pub fn get_eye_poses(
         &self,
-        format: libovr_gl_ffi::GLuint,
-        width:  i32,
-        height: i32
-    ) -> Result<GlSwapTextureSet, OvrError> {
+        frame_index:        u64,
+        latency_marker:     bool,
+        hmd_to_eye_offset: [ovrVector3f; 2]
+    ) -> ([ovrPosef; 2], f64) {
         unsafe {
-            let mut texture_set = mem::uninitialized();
-            let result = libovr_gl_ffi::ovr_CreateSwapTextureSetGL(
-                self.session as libovr_gl_ffi::ovrHmd,
-                format,
-                width,
-                height,
-                &mut texture_set);
+            let mut hmd_to_eye_offset = hmd_to_eye_offset;
+            let mut eye_poses = mem::zeroed::<[ovrPosef; 2]>();
+            let mut sensor_sample_time = 0.0;
+
+            ovr_GetEyePoses(
+                self.session,
+                frame_index as i64,
+                latency_marker as i8,
+                mem::transmute(&mut hmd_to_eye_offset),
+                mem::transmute(&mut eye_poses),
+                &mut sensor_sample_time
+            );
+
+            (eye_poses, sensor_sample_time)
+        }
+    }
+
+    pub fn create_texture_swap_chain_gl(
+        &self,
+        desc:   TextureSwapChainDesc
+    ) -> Result<GlTextureSwapChain, OvrError> {
+        unsafe {
+            let mut texture_chain = mem::zeroed::<ffi_gl::ovrTextureSwapChain>();
+            let result =
+                ffi_gl::ovr_CreateTextureSwapChainGL(
+                    self.session as ffi_gl::ovrSession,
+                    mem::transmute(&desc.desc),
+                    &mut texture_chain);
 
             if result >= 0 {
-                Ok(GlSwapTextureSet {
-                    set:    texture_set as *mut ovrSwapTextureSet,
+                Ok(GlTextureSwapChain {
+                    session:    self.session,
+                    chain:      texture_chain as ovrTextureSwapChain,
                 })
             } else {
-                Err(mem::transmute(result))
+                Err(result.into())
             }
         }
     }
 
     pub fn create_mirror_texture_gl(
         &self,
-        format: libovr_gl_ffi::GLuint,
-        width:  i32,
-        height: i32
-    ) -> Texture {
+        desc: MirrorTextureDesc
+    ) -> Result<GlMirrorTexture, OvrError> {
         unsafe {
-            let mut texture: &mut libovr_gl_ffi::ovrGLTexture = mem::uninitialized();
-            libovr_gl_ffi::ovr_CreateMirrorTextureGL(
-                self.session as libovr_gl_ffi::ovrHmd,
-                format,
-                width,
-                height,
-                mem::transmute(&mut texture));
+            let mut texture = mem::zeroed::<ffi_gl::ovrMirrorTexture>();
+            let result =
+                ffi_gl::ovr_CreateMirrorTextureGL(
+                    self.session as ffi_gl::ovrSession,
+                    mem::transmute(&desc.desc),
+                    &mut texture);
 
-            Texture {
-                texture: texture as *mut libovr_gl_ffi::ovrGLTexture
+            if result > 0 {
+                Ok(GlMirrorTexture {
+                    session: self.session,
+                    texture: texture as ovrMirrorTexture
+                })
+            } else {
+                Err(result.into())
             }
         }
     }
@@ -350,12 +357,18 @@ impl Session {
                     None => ptr::null()
                 };
 
-            let result = ovr_SubmitFrame(self.session, frame_index, view_scale_desc, layer_header,
-                                         layer_count as u32);
+            let result =
+                ovr_SubmitFrame(
+                    self.session,
+                    frame_index,
+                    view_scale_desc,
+                    layer_header,
+                    layer_count as u32);
+
             if result >= 0 {
                 Ok(())
             } else {
-                Err(mem::transmute(result))
+                Err(result.into())
             }
         }
     }
@@ -369,6 +382,7 @@ impl Drop for Session {
     }
 }
 
+/// Initialize the runtime.
 pub fn initialize() -> Result<(), OvrError> {
     unsafe {
         let mut params = ovrInitParams {
@@ -383,17 +397,19 @@ pub fn initialize() -> Result<(), OvrError> {
         if result >= 0 {
             Ok(())
         } else {
-            Err(mem::transmute(result))
+            Err(result.into())
         }
     }
 }
 
+/// Shut down the runtime.
 pub fn shutdown() {
     unsafe {
         ovr_Shutdown();
     }
 }
 
+/// Try and create a session.
 pub fn create() -> Result<Session, OvrError> {
     unsafe {
         let mut session = mem::uninitialized();
@@ -404,7 +420,7 @@ pub fn create() -> Result<Session, OvrError> {
                 session: session
             })
         } else {
-            Err(mem::transmute(result))
+            Err(result.into())
         }
     }
 }
@@ -439,6 +455,7 @@ impl DetectResult {
     }
 }
 
+/// Detect the presence of the runtime / HMD connection.
 pub fn detect(timeout_ms: i32) -> DetectResult {
     unsafe {
         DetectResult {

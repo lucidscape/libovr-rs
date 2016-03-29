@@ -1,7 +1,7 @@
 
 The MIT License (MIT)
 
-Copyright (c) 2016 Braden Evans
+Copyright (c) 2016 Lucidscape Technologies Inc.
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal

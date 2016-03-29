@@ -41,9 +41,10 @@ pub enum Enum_ovrSuccessType_ {
     ovrSuccess_HMDFirmwareMismatch = 4100,
     ovrSuccess_TrackerFirmwareMismatch = 4101,
     ovrSuccess_ControllerFirmwareMismatch = 4104,
+    ovrSuccess_TrackerDriverNotFound = 4105,
 }
 pub type ovrSuccessType = Enum_ovrSuccessType_;
-#[derive(Clone, Copy)]
+#[derive(Clone, Copy, Debug)]
 #[repr(i32)]
 pub enum Enum_ovrErrorType_ {
     ovrError_MemoryAllocationFailure = -1000,
@@ -54,6 +55,11 @@ pub enum Enum_ovrErrorType_ {
     ovrError_InvalidParameter = -1005,
     ovrError_ServiceError = -1006,
     ovrError_NoHmd = -1007,
+    ovrError_Unsupported = -1009,
+    ovrError_DeviceUnavailable = -1010,
+    ovrError_InvalidHeadsetOrientation = -1011,
+    ovrError_ClientSkippedDestroy = -1012,
+    ovrError_ClientSkippedShutdown = -1013,
     ovrError_AudioReservedBegin = -2000,
     ovrError_AudioDeviceNotFound = -2001,
     ovrError_AudioComError = -2002,
@@ -74,6 +80,11 @@ pub enum Enum_ovrErrorType_ {
     ovrError_OutOfDateGfxDriver = -3013,
     ovrError_IncompatibleGPU = -3014,
     ovrError_NoValidVRDisplaySystem = -3015,
+    ovrError_Obsolete = -3016,
+    ovrError_DisabledOrDefaultAdapter = -3017,
+    ovrError_HybridGraphicsNotSupported = -3018,
+    ovrError_DisplayManagerInit = -3019,
+    ovrError_TrackerDriverInit = -3020,
     ovrError_InvalidBundleAdjustment = -4000,
     ovrError_USBBandwidth = -4001,
     ovrError_USBEnumeratedSpeed = -4002,
@@ -86,17 +97,52 @@ pub enum Enum_ovrErrorType_ {
     ovrError_TrackerMemoryWriteFailure = -4009,
     ovrError_TrackerFrameTimeout = -4010,
     ovrError_TrackerTruncatedFrame = -4011,
+    ovrError_TrackerDriverFailure = -4012,
+    ovrError_TrackerNRFFailure = -4013,
+    ovrError_HardwareGone = -4014,
+    ovrError_NordicEnabledNoSync = -4015,
+    ovrError_NordicSyncNoFrames = -4016,
+    ovrError_CatastrophicFailure = -4017,
     ovrError_HMDFirmwareMismatch = -4100,
     ovrError_TrackerFirmwareMismatch = -4101,
     ovrError_BootloaderDeviceDetected = -4102,
     ovrError_TrackerCalibrationError = -4103,
     ovrError_ControllerFirmwareMismatch = -4104,
+    ovrError_IMUTooManyLostSamples = -4200,
+    ovrError_IMURateError = -4201,
+    ovrError_FeatureReportFailure = -4202,
     ovrError_Incomplete = -5000,
     ovrError_Abandoned = -5001,
     ovrError_DisplayLost = -6000,
+    ovrError_TextureSwapChainFull = -6001,
+    ovrError_TextureSwapChainInvalid = -6002,
     ovrError_RuntimeException = -7000,
+    ovrError_MetricsUnknownApp = -90000,
+    ovrError_MetricsDuplicateApp = -90001,
+    ovrError_MetricsNoEvents = -90002,
+    ovrError_MetricsRuntime = -90003,
+    ovrError_MetricsFile = -90004,
+    ovrError_MetricsNoClientInfo = -90005,
+    ovrError_MetricsNoAppMetaData = -90006,
+    ovrError_MetricsNoApp = -90007,
+    ovrError_MetricsOafFailure = -90008,
+    ovrError_MetricsSessionAlreadyActive = -90009,
+    ovrError_MetricsSessionNotActive = -90010,
 }
 pub type ovrErrorType = Enum_ovrErrorType_;
+#[repr(C)]
+#[derive(Copy)]
+pub struct Struct_ovrErrorInfo_ {
+    pub Result: ovrResult,
+    pub ErrorString: [::std::os::raw::c_char; 512usize],
+}
+impl ::std::clone::Clone for Struct_ovrErrorInfo_ {
+    fn clone(&self) -> Self { *self }
+}
+impl ::std::default::Default for Struct_ovrErrorInfo_ {
+    fn default() -> Self { unsafe { ::std::mem::zeroed() } }
+}
+pub type ovrErrorInfo = Struct_ovrErrorInfo_;
 pub type ovrBool = ::std::os::raw::c_char;
 #[repr(C)]
 #[derive(Copy)]
@@ -249,16 +295,15 @@ pub enum Enum_ovrHmdType_ {
     ovrHmd_E3_2015 = 10,
     ovrHmd_ES06 = 11,
     ovrHmd_ES09 = 12,
+    ovrHmd_ES11 = 13,
+    ovrHmd_CV1 = 14,
     ovrHmd_EnumSize = 2147483647,
 }
 pub type ovrHmdType = Enum_ovrHmdType_;
-pub const ovrHmdCap_Service_Mask: Enum_ovrHmdCaps_ =
-    Enum_ovrHmdCaps_::ovrHmdCap_Writable_Mask;
 #[derive(Clone, Copy)]
 #[repr(i32)]
 pub enum Enum_ovrHmdCaps_ {
     ovrHmdCap_DebugDevice = 16,
-    ovrHmdCap_Writable_Mask = 0,
     ovrHmdCap_EnumSize = 2147483647,
 }
 pub type ovrHmdCaps = Enum_ovrHmdCaps_;
@@ -280,6 +325,15 @@ pub enum Enum_ovrEyeType_ {
     ovrEye_EnumSize = 2147483647,
 }
 pub type ovrEyeType = Enum_ovrEyeType_;
+#[derive(Clone, Copy)]
+#[repr(i32)]
+pub enum Enum_ovrTrackingOrigin_ {
+    ovrTrackingOrigin_EyeLevel = 0,
+    ovrTrackingOrigin_FloorLevel = 1,
+    ovrTrackingOrigin_Count = 2,
+    ovrTrackingOrigin_EnumSize = 2147483647,
+}
+pub type ovrTrackingOrigin = Enum_ovrTrackingOrigin_;
 #[repr(C)]
 #[derive(Copy)]
 pub struct Struct_ovrGraphicsLuid_ {
@@ -304,10 +358,6 @@ pub struct Struct_ovrHmdDesc_ {
     pub SerialNumber: [::std::os::raw::c_char; 24usize],
     pub FirmwareMajor: ::std::os::raw::c_short,
     pub FirmwareMinor: ::std::os::raw::c_short,
-    pub CameraFrustumHFovInRadians: ::std::os::raw::c_float,
-    pub CameraFrustumVFovInRadians: ::std::os::raw::c_float,
-    pub CameraFrustumNearZInMeters: ::std::os::raw::c_float,
-    pub CameraFrustumFarZInMeters: ::std::os::raw::c_float,
     pub AvailableHmdCaps: ::std::os::raw::c_uint,
     pub DefaultHmdCaps: ::std::os::raw::c_uint,
     pub AvailableTrackingCaps: ::std::os::raw::c_uint,
@@ -327,46 +377,59 @@ impl ::std::default::Default for Struct_ovrHmdDesc_ {
 pub type ovrHmdDesc = Struct_ovrHmdDesc_;
 pub enum Struct_ovrHmdStruct { }
 pub type ovrSession = *mut Struct_ovrHmdStruct;
-pub type ovrHmd = *mut Struct_ovrHmdStruct;
 #[derive(Clone, Copy)]
 #[repr(i32)]
 pub enum Enum_ovrStatusBits_ {
     ovrStatus_OrientationTracked = 1,
     ovrStatus_PositionTracked = 2,
-    ovrStatus_CameraPoseTracked = 4,
-    ovrStatus_PositionConnected = 32,
-    ovrStatus_HmdConnected = 128,
     ovrStatus_EnumSize = 2147483647,
 }
 pub type ovrStatusBits = Enum_ovrStatusBits_;
 #[repr(C)]
 #[derive(Copy)]
-pub struct Struct_ovrSensorData_ {
-    pub Accelerometer: ovrVector3f,
-    pub Gyro: ovrVector3f,
-    pub Magnetometer: ovrVector3f,
-    pub Temperature: ::std::os::raw::c_float,
-    pub TimeInSeconds: ::std::os::raw::c_float,
+pub struct Struct_ovrTrackerDesc_ {
+    pub FrustumHFovInRadians: ::std::os::raw::c_float,
+    pub FrustumVFovInRadians: ::std::os::raw::c_float,
+    pub FrustumNearZInMeters: ::std::os::raw::c_float,
+    pub FrustumFarZInMeters: ::std::os::raw::c_float,
 }
-impl ::std::clone::Clone for Struct_ovrSensorData_ {
+impl ::std::clone::Clone for Struct_ovrTrackerDesc_ {
     fn clone(&self) -> Self { *self }
 }
-impl ::std::default::Default for Struct_ovrSensorData_ {
+impl ::std::default::Default for Struct_ovrTrackerDesc_ {
     fn default() -> Self { unsafe { ::std::mem::zeroed() } }
 }
-pub type ovrSensorData = Struct_ovrSensorData_;
+pub type ovrTrackerDesc = Struct_ovrTrackerDesc_;
+#[derive(Clone, Copy)]
+#[repr(i32)]
+pub enum Enum_ovrTrackerFlags_ {
+    ovrTracker_Connected = 32,
+    ovrTracker_PoseTracked = 4,
+}
+pub type ovrTrackerFlags = Enum_ovrTrackerFlags_;
+#[repr(C)]
+#[derive(Copy)]
+pub struct Struct__ovrTrackerPose {
+    pub TrackerFlags: ::std::os::raw::c_uint,
+    pub Pose: ovrPosef,
+    pub LeveledPose: ovrPosef,
+    pub pad0: [::std::os::raw::c_char; 4usize],
+}
+impl ::std::clone::Clone for Struct__ovrTrackerPose {
+    fn clone(&self) -> Self { *self }
+}
+impl ::std::default::Default for Struct__ovrTrackerPose {
+    fn default() -> Self { unsafe { ::std::mem::zeroed() } }
+}
+pub type ovrTrackerPose = Struct__ovrTrackerPose;
 #[repr(C)]
 #[derive(Copy)]
 pub struct Struct_ovrTrackingState_ {
     pub HeadPose: ovrPoseStatef,
-    pub CameraPose: ovrPosef,
-    pub LeveledCameraPose: ovrPosef,
-    pub HandPoses: [ovrPoseStatef; 2usize],
-    pub RawSensorData: ovrSensorData,
     pub StatusFlags: ::std::os::raw::c_uint,
+    pub HandPoses: [ovrPoseStatef; 2usize],
     pub HandStatusFlags: [::std::os::raw::c_uint; 2usize],
-    pub LastCameraFrameCounter: uint32_t,
-    pub pad0: [::std::os::raw::c_char; 4usize],
+    pub CalibratedOrigin: ovrPosef,
 }
 impl ::std::clone::Clone for Struct_ovrTrackingState_ {
     fn clone(&self) -> Self { *self }
@@ -382,7 +445,7 @@ pub struct Struct_ovrEyeRenderDesc_ {
     pub Fov: ovrFovPort,
     pub DistortedViewport: ovrRecti,
     pub PixelsPerTanAngleAtCenter: ovrVector2f,
-    pub HmdToEyeViewOffset: ovrVector3f,
+    pub HmdToEyeOffset: ovrVector3f,
 }
 impl ::std::clone::Clone for Struct_ovrEyeRenderDesc_ {
     fn clone(&self) -> Self { *self }
@@ -408,7 +471,7 @@ pub type ovrTimewarpProjectionDesc = Struct_ovrTimewarpProjectionDesc_;
 #[repr(C)]
 #[derive(Copy)]
 pub struct Struct_ovrViewScaleDesc_ {
-    pub HmdToEyeViewOffset: [ovrVector3f; 2usize],
+    pub HmdToEyeOffset: [ovrVector3f; 2usize],
     pub HmdSpaceToWorldScaleInMeters: ::std::os::raw::c_float,
 }
 impl ::std::clone::Clone for Struct_ovrViewScaleDesc_ {
@@ -420,56 +483,94 @@ impl ::std::default::Default for Struct_ovrViewScaleDesc_ {
 pub type ovrViewScaleDesc = Struct_ovrViewScaleDesc_;
 #[derive(Clone, Copy)]
 #[repr(i32)]
-pub enum Enum_ovrRenderAPIType_ {
-    ovrRenderAPI_None = 0,
-    ovrRenderAPI_OpenGL = 1,
-    ovrRenderAPI_Android_GLES = 2,
-    ovrRenderAPI_D3D11 = 5,
-    ovrRenderAPI_Count = 4,
-    ovrRenderAPI_EnumSize = 2147483647,
+pub enum Enum_ovrTextureType_ {
+    ovrTexture_2D = 0,
+    ovrTexture_2D_External = 1,
+    ovrTexture_Cube = 2,
+    ovrTexture_Count = 3,
+    ovrTexture_EnumSize = 2147483647,
 }
-pub type ovrRenderAPIType = Enum_ovrRenderAPIType_;
+pub type ovrTextureType = Enum_ovrTextureType_;
+#[derive(Clone, Copy)]
+#[repr(i32)]
+pub enum Enum_ovrTextureBindFlags_ {
+    ovrTextureBind_None = 0,
+    ovrTextureBind_DX_RenderTarget = 1,
+    ovrTextureBind_DX_UnorderedAccess = 2,
+    ovrTextureBind_DX_DepthStencil = 4,
+    ovrTextureBind_EnumSize = 2147483647,
+}
+pub type ovrTextureBindFlags = Enum_ovrTextureBindFlags_;
+#[derive(Clone, Copy)]
+#[repr(i32)]
+pub enum Enum_ovrTextureFormat_ {
+    OVR_FORMAT_UNKNOWN = 0,
+    OVR_FORMAT_B5G6R5_UNORM = 1,
+    OVR_FORMAT_B5G5R5A1_UNORM = 2,
+    OVR_FORMAT_B4G4R4A4_UNORM = 3,
+    OVR_FORMAT_R8G8B8A8_UNORM = 4,
+    OVR_FORMAT_R8G8B8A8_UNORM_SRGB = 5,
+    OVR_FORMAT_B8G8R8A8_UNORM = 6,
+    OVR_FORMAT_B8G8R8A8_UNORM_SRGB = 7,
+    OVR_FORMAT_B8G8R8X8_UNORM = 8,
+    OVR_FORMAT_B8G8R8X8_UNORM_SRGB = 9,
+    OVR_FORMAT_R16G16B16A16_FLOAT = 10,
+    OVR_FORMAT_D16_UNORM = 11,
+    OVR_FORMAT_D24_UNORM_S8_UINT = 12,
+    OVR_FORMAT_D32_FLOAT = 13,
+    OVR_FORMAT_D32_FLOAT_S8X24_UINT = 14,
+    OVR_FORMAT_ENUMSIZE = 2147483647,
+}
+pub type ovrTextureFormat = Enum_ovrTextureFormat_;
+#[derive(Clone, Copy)]
+#[repr(i32)]
+pub enum Enum_ovrTextureMiscFlags_ {
+    ovrTextureMisc_None = 0,
+    ovrTextureMisc_DX_Typeless = 1,
+    ovrTextureMisc_AllowGenerateMips = 2,
+    ovrTextureMisc_EnumSize = 2147483647,
+}
+pub type ovrTextureFlags = Enum_ovrTextureMiscFlags_;
 #[repr(C)]
 #[derive(Copy)]
-pub struct Struct_ovrTextureHeader_ {
-    pub API: ovrRenderAPIType,
-    pub TextureSize: ovrSizei,
+pub struct Struct_Unnamed1 {
+    pub Type: ovrTextureType,
+    pub Format: ovrTextureFormat,
+    pub ArraySize: ::std::os::raw::c_int,
+    pub Width: ::std::os::raw::c_int,
+    pub Height: ::std::os::raw::c_int,
+    pub MipLevels: ::std::os::raw::c_int,
+    pub SampleCount: ::std::os::raw::c_int,
+    pub StaticImage: ovrBool,
+    pub MiscFlags: ::std::os::raw::c_uint,
+    pub BindFlags: ::std::os::raw::c_uint,
 }
-impl ::std::clone::Clone for Struct_ovrTextureHeader_ {
+impl ::std::clone::Clone for Struct_Unnamed1 {
     fn clone(&self) -> Self { *self }
 }
-impl ::std::default::Default for Struct_ovrTextureHeader_ {
+impl ::std::default::Default for Struct_Unnamed1 {
     fn default() -> Self { unsafe { ::std::mem::zeroed() } }
 }
-pub type ovrTextureHeader = Struct_ovrTextureHeader_;
+pub type ovrTextureSwapChainDesc = Struct_Unnamed1;
 #[repr(C)]
 #[derive(Copy)]
-pub struct Struct_ovrTexture_ {
-    pub Header: ovrTextureHeader,
-    pub pad0: [::std::os::raw::c_char; 4usize],
-    pub PlatformData: [uintptr_t; 8usize],
+pub struct Struct_Unnamed2 {
+    pub Format: ovrTextureFormat,
+    pub Width: ::std::os::raw::c_int,
+    pub Height: ::std::os::raw::c_int,
+    pub MiscFlags: ::std::os::raw::c_uint,
 }
-impl ::std::clone::Clone for Struct_ovrTexture_ {
+impl ::std::clone::Clone for Struct_Unnamed2 {
     fn clone(&self) -> Self { *self }
 }
-impl ::std::default::Default for Struct_ovrTexture_ {
+impl ::std::default::Default for Struct_Unnamed2 {
     fn default() -> Self { unsafe { ::std::mem::zeroed() } }
 }
-pub type ovrTexture = Struct_ovrTexture_;
-#[repr(C)]
-#[derive(Copy)]
-pub struct Struct_ovrSwapTextureSet_ {
-    pub Textures: *mut ovrTexture,
-    pub TextureCount: ::std::os::raw::c_int,
-    pub CurrentIndex: ::std::os::raw::c_int,
-}
-impl ::std::clone::Clone for Struct_ovrSwapTextureSet_ {
-    fn clone(&self) -> Self { *self }
-}
-impl ::std::default::Default for Struct_ovrSwapTextureSet_ {
-    fn default() -> Self { unsafe { ::std::mem::zeroed() } }
-}
-pub type ovrSwapTextureSet = Struct_ovrSwapTextureSet_;
+pub type ovrMirrorTextureDesc = Struct_Unnamed2;
+pub enum Struct_ovrTextureSwapChainData { }
+pub type ovrTextureSwapChain = *mut Struct_ovrTextureSwapChainData;
+pub enum Struct_ovrMirrorTextureData { }
+pub type ovrMirrorTexture = *mut Struct_ovrMirrorTextureData;
 #[derive(Clone, Copy)]
 #[repr(i32)]
 pub enum Enum_ovrButton_ {
@@ -477,16 +578,21 @@ pub enum Enum_ovrButton_ {
     ovrButton_B = 2,
     ovrButton_RThumb = 4,
     ovrButton_RShoulder = 8,
+    ovrButton_RMask = 15,
     ovrButton_X = 256,
     ovrButton_Y = 512,
     ovrButton_LThumb = 1024,
     ovrButton_LShoulder = 2048,
+    ovrButton_LMask = 3840,
     ovrButton_Up = 65536,
     ovrButton_Down = 131072,
     ovrButton_Left = 262144,
     ovrButton_Right = 524288,
     ovrButton_Enter = 1048576,
     ovrButton_Back = 2097152,
+    ovrButton_VolUp = 4194304,
+    ovrButton_VolDown = 8388608,
+    ovrButton_Home = 16777216,
     ovrButton_Private = 29360128,
     ovrButton_EnumSize = 2147483647,
 }
@@ -498,14 +604,18 @@ pub enum Enum_ovrTouch_ {
     ovrTouch_B = 2,
     ovrTouch_RThumb = 4,
     ovrTouch_RIndexTrigger = 16,
+    ovrTouch_RButtonMask = 23,
     ovrTouch_X = 256,
     ovrTouch_Y = 512,
     ovrTouch_LThumb = 1024,
     ovrTouch_LIndexTrigger = 4096,
+    ovrTouch_LButtonMask = 5888,
     ovrTouch_RIndexPointing = 32,
     ovrTouch_RThumbUp = 64,
+    ovrTouch_RPoseMask = 96,
     ovrTouch_LIndexPointing = 8192,
     ovrTouch_LThumbUp = 16384,
+    ovrTouch_LPoseMask = 24576,
     ovrTouch_EnumSize = 2147483647,
 }
 pub type ovrTouch = Enum_ovrTouch_;
@@ -516,8 +626,9 @@ pub enum Enum_ovrControllerType_ {
     ovrControllerType_LTouch = 1,
     ovrControllerType_RTouch = 2,
     ovrControllerType_Touch = 3,
+    ovrControllerType_Remote = 4,
     ovrControllerType_XBox = 16,
-    ovrControllerType_All = 255,
+    ovrControllerType_Active = 255,
     ovrControllerType_EnumSize = 2147483647,
 }
 pub type ovrControllerType = Enum_ovrControllerType_;
@@ -526,6 +637,7 @@ pub type ovrControllerType = Enum_ovrControllerType_;
 pub enum Enum_ovrHandType_ {
     ovrHand_Left = 0,
     ovrHand_Right = 1,
+    ovrHand_Count = 2,
     ovrHand_EnumSize = 2147483647,
 }
 pub type ovrHandType = Enum_ovrHandType_;
@@ -533,12 +645,12 @@ pub type ovrHandType = Enum_ovrHandType_;
 #[derive(Copy)]
 pub struct Struct_ovrInputState_ {
     pub TimeInSeconds: ::std::os::raw::c_double,
-    pub ConnectedControllerTypes: ::std::os::raw::c_uint,
     pub Buttons: ::std::os::raw::c_uint,
     pub Touches: ::std::os::raw::c_uint,
     pub IndexTrigger: [::std::os::raw::c_float; 2usize],
     pub HandTrigger: [::std::os::raw::c_float; 2usize],
     pub Thumbstick: [ovrVector2f; 2usize],
+    pub ControllerType: ovrControllerType,
 }
 impl ::std::clone::Clone for Struct_ovrInputState_ {
     fn clone(&self) -> Self { *self }
@@ -589,22 +701,13 @@ impl ::std::default::Default for Struct_ovrInitParams_ {
 pub type ovrInitParams = Struct_ovrInitParams_;
 #[repr(C)]
 #[derive(Copy)]
-pub struct Struct_ovrErrorInfo_ {
-    pub Result: ovrResult,
-    pub ErrorString: [::std::os::raw::c_char; 512usize],
-}
-impl ::std::clone::Clone for Struct_ovrErrorInfo_ {
-    fn clone(&self) -> Self { *self }
-}
-impl ::std::default::Default for Struct_ovrErrorInfo_ {
-    fn default() -> Self { unsafe { ::std::mem::zeroed() } }
-}
-pub type ovrErrorInfo = Struct_ovrErrorInfo_;
-#[repr(C)]
-#[derive(Copy)]
 pub struct Struct_ovrSessionStatus_ {
-    pub HasVrFocus: ovrBool,
+    pub IsVisible: ovrBool,
     pub HmdPresent: ovrBool,
+    pub HmdMounted: ovrBool,
+    pub DisplayLost: ovrBool,
+    pub ShouldQuit: ovrBool,
+    pub ShouldRecenter: ovrBool,
 }
 impl ::std::clone::Clone for Struct_ovrSessionStatus_ {
     fn clone(&self) -> Self { *self }
@@ -615,16 +718,14 @@ impl ::std::default::Default for Struct_ovrSessionStatus_ {
 pub type ovrSessionStatus = Struct_ovrSessionStatus_;
 #[derive(Clone, Copy)]
 #[repr(i32)]
-pub enum Enum_Unnamed1 { ovrMaxLayerCount = 32, }
+pub enum Enum_Unnamed3 { ovrMaxLayerCount = 16, }
 #[derive(Clone, Copy)]
 #[repr(i32)]
 pub enum Enum_ovrLayerType_ {
     ovrLayerType_Disabled = 0,
     ovrLayerType_EyeFov = 1,
-    ovrLayerType_EyeFovDepth = 2,
     ovrLayerType_Quad = 3,
     ovrLayerType_EyeMatrix = 5,
-    ovrLayerType_Direct = 6,
     ovrLayerType_EnumSize = 2147483647,
 }
 pub type ovrLayerType = Enum_ovrLayerType_;
@@ -653,7 +754,7 @@ pub type ovrLayerHeader = Struct_ovrLayerHeader_;
 #[derive(Copy)]
 pub struct Struct_ovrLayerEyeFov_ {
     pub Header: ovrLayerHeader,
-    pub ColorTexture: [*mut ovrSwapTextureSet; 2usize],
+    pub ColorTexture: [ovrTextureSwapChain; 2usize],
     pub Viewport: [ovrRecti; 2usize],
     pub Fov: [ovrFovPort; 2usize],
     pub RenderPose: [ovrPosef; 2usize],
@@ -668,28 +769,9 @@ impl ::std::default::Default for Struct_ovrLayerEyeFov_ {
 pub type ovrLayerEyeFov = Struct_ovrLayerEyeFov_;
 #[repr(C)]
 #[derive(Copy)]
-pub struct Struct_ovrLayerEyeFovDepth_ {
-    pub Header: ovrLayerHeader,
-    pub ColorTexture: [*mut ovrSwapTextureSet; 2usize],
-    pub Viewport: [ovrRecti; 2usize],
-    pub Fov: [ovrFovPort; 2usize],
-    pub RenderPose: [ovrPosef; 2usize],
-    pub SensorSampleTime: ::std::os::raw::c_double,
-    pub DepthTexture: [*mut ovrSwapTextureSet; 2usize],
-    pub ProjectionDesc: ovrTimewarpProjectionDesc,
-}
-impl ::std::clone::Clone for Struct_ovrLayerEyeFovDepth_ {
-    fn clone(&self) -> Self { *self }
-}
-impl ::std::default::Default for Struct_ovrLayerEyeFovDepth_ {
-    fn default() -> Self { unsafe { ::std::mem::zeroed() } }
-}
-pub type ovrLayerEyeFovDepth = Struct_ovrLayerEyeFovDepth_;
-#[repr(C)]
-#[derive(Copy)]
 pub struct Struct_ovrLayerEyeMatrix_ {
     pub Header: ovrLayerHeader,
-    pub ColorTexture: [*mut ovrSwapTextureSet; 2usize],
+    pub ColorTexture: [ovrTextureSwapChain; 2usize],
     pub Viewport: [ovrRecti; 2usize],
     pub RenderPose: [ovrPosef; 2usize],
     pub Matrix: [ovrMatrix4f; 2usize],
@@ -706,7 +788,7 @@ pub type ovrLayerEyeMatrix = Struct_ovrLayerEyeMatrix_;
 #[derive(Copy)]
 pub struct Struct_ovrLayerQuad_ {
     pub Header: ovrLayerHeader,
-    pub ColorTexture: *mut ovrSwapTextureSet,
+    pub ColorTexture: ovrTextureSwapChain,
     pub Viewport: ovrRecti,
     pub QuadPoseCenter: ovrPosef,
     pub QuadSize: ovrVector2f,
@@ -720,22 +802,8 @@ impl ::std::default::Default for Struct_ovrLayerQuad_ {
 pub type ovrLayerQuad = Struct_ovrLayerQuad_;
 #[repr(C)]
 #[derive(Copy)]
-pub struct Struct_ovrLayerDirect_ {
-    pub Header: ovrLayerHeader,
-    pub ColorTexture: [*mut ovrSwapTextureSet; 2usize],
-    pub Viewport: [ovrRecti; 2usize],
-}
-impl ::std::clone::Clone for Struct_ovrLayerDirect_ {
-    fn clone(&self) -> Self { *self }
-}
-impl ::std::default::Default for Struct_ovrLayerDirect_ {
-    fn default() -> Self { unsafe { ::std::mem::zeroed() } }
-}
-pub type ovrLayerDirect = Struct_ovrLayerDirect_;
-#[repr(C)]
-#[derive(Copy)]
 pub struct Union_ovrLayer_Union_ {
-    pub _bindgen_data_: [u64; 23usize],
+    pub _bindgen_data_: [u64; 19usize],
 }
 impl Union_ovrLayer_Union_ {
     pub unsafe fn Header(&mut self) -> *mut ovrLayerHeader {
@@ -746,15 +814,7 @@ impl Union_ovrLayer_Union_ {
         let raw: *mut u8 = ::std::mem::transmute(&self._bindgen_data_);
         ::std::mem::transmute(raw.offset(0))
     }
-    pub unsafe fn EyeFovDepth(&mut self) -> *mut ovrLayerEyeFovDepth {
-        let raw: *mut u8 = ::std::mem::transmute(&self._bindgen_data_);
-        ::std::mem::transmute(raw.offset(0))
-    }
     pub unsafe fn Quad(&mut self) -> *mut ovrLayerQuad {
-        let raw: *mut u8 = ::std::mem::transmute(&self._bindgen_data_);
-        ::std::mem::transmute(raw.offset(0))
-    }
-    pub unsafe fn Direct(&mut self) -> *mut ovrLayerDirect {
         let raw: *mut u8 = ::std::mem::transmute(&self._bindgen_data_);
         ::std::mem::transmute(raw.offset(0))
     }
@@ -770,11 +830,12 @@ pub type ovrLayer_Union = Union_ovrLayer_Union_;
 #[repr(i32)]
 pub enum Enum_ovrPerfHudMode_ {
     ovrPerfHud_Off = 0,
-    ovrPerfHud_LatencyTiming = 1,
-    ovrPerfHud_RenderTiming = 2,
-    ovrPerfHud_PerfHeadroom = 3,
-    ovrPerfHud_VersionInfo = 4,
-    ovrPerfHud_Count = 5,
+    ovrPerfHud_PerfSummary = 1,
+    ovrPerfHud_LatencyTiming = 2,
+    ovrPerfHud_AppRenderTiming = 3,
+    ovrPerfHud_CompRenderTiming = 4,
+    ovrPerfHud_VersionInfo = 5,
+    ovrPerfHud_Count = 6,
     ovrPerfHud_EnumSize = 2147483647,
 }
 pub type ovrPerfHudMode = Enum_ovrPerfHudMode_;
@@ -823,13 +884,11 @@ pub type compileTimeAssert22 = [::std::os::raw::c_char; 1usize];
 pub type compileTimeAssert23 = [::std::os::raw::c_char; 1usize];
 pub type compileTimeAssert24 = [::std::os::raw::c_char; 1usize];
 pub type compileTimeAssert25 = [::std::os::raw::c_char; 1usize];
-pub type compileTimeAssert26 = [::std::os::raw::c_char; 1usize];
-pub type compileTimeAssert27 = [::std::os::raw::c_char; 1usize];
 #[derive(Clone, Copy)]
 #[repr(i32)]
 pub enum Enum_ovrProjectionModifier_ {
     ovrProjection_None = 0,
-    ovrProjection_RightHanded = 1,
+    ovrProjection_LeftHanded = 1,
     ovrProjection_FarLessThanNear = 2,
     ovrProjection_FarClipAtInfinity = 4,
     ovrProjection_ClipRangeOpenGL = 8,
@@ -849,45 +908,7 @@ impl ::std::default::Default for Struct_ovrDetectResult_ {
     fn default() -> Self { unsafe { ::std::mem::zeroed() } }
 }
 pub type ovrDetectResult = Struct_ovrDetectResult_;
-pub type compileTimeAssert28 = [::std::os::raw::c_char; 1usize];
-pub type GLuint = ::std::os::raw::c_uint;
-#[repr(C)]
-#[derive(Copy)]
-pub struct Struct_ovrGLTextureData_s {
-    pub Header: ovrTextureHeader,
-    pub TexId: GLuint,
-}
-impl ::std::clone::Clone for Struct_ovrGLTextureData_s {
-    fn clone(&self) -> Self { *self }
-}
-impl ::std::default::Default for Struct_ovrGLTextureData_s {
-    fn default() -> Self { unsafe { ::std::mem::zeroed() } }
-}
-pub type ovrGLTextureData = Struct_ovrGLTextureData_s;
-pub type compileTimeAssert29 = [::std::os::raw::c_char; 1usize];
-pub type compileTimeAssert30 = [::std::os::raw::c_char; 1usize];
-#[repr(C)]
-#[derive(Copy)]
-pub struct Union_ovrGLTexture_s {
-    pub _bindgen_data_: [u64; 10usize],
-}
-impl Union_ovrGLTexture_s {
-    pub unsafe fn Texture(&mut self) -> *mut ovrTexture {
-        let raw: *mut u8 = ::std::mem::transmute(&self._bindgen_data_);
-        ::std::mem::transmute(raw.offset(0))
-    }
-    pub unsafe fn OGL(&mut self) -> *mut ovrGLTextureData {
-        let raw: *mut u8 = ::std::mem::transmute(&self._bindgen_data_);
-        ::std::mem::transmute(raw.offset(0))
-    }
-}
-impl ::std::clone::Clone for Union_ovrGLTexture_s {
-    fn clone(&self) -> Self { *self }
-}
-impl ::std::default::Default for Union_ovrGLTexture_s {
-    fn default() -> Self { unsafe { ::std::mem::zeroed() } }
-}
-pub type ovrGLTexture = Union_ovrGLTexture_s;
+pub type compileTimeAssert26 = [::std::os::raw::c_char; 1usize];
 extern "C" {
     pub static mut __security_cookie: uintptr_t;
 }
@@ -904,38 +925,59 @@ extern "C" {
                             message: *const ::std::os::raw::c_char)
      -> ::std::os::raw::c_int;
     pub fn ovr_GetHmdDesc(session: ovrSession) -> ovrHmdDesc;
+    pub fn ovr_GetTrackerCount(session: ovrSession) -> ::std::os::raw::c_uint;
+    pub fn ovr_GetTrackerDesc(session: ovrSession,
+                              trackerDescIndex: ::std::os::raw::c_uint)
+     -> ovrTrackerDesc;
     pub fn ovr_Create(pSession: *mut ovrSession, pLuid: *mut ovrGraphicsLuid)
      -> ovrResult;
     pub fn ovr_Destroy(session: ovrSession);
     pub fn ovr_GetSessionStatus(session: ovrSession,
                                 sessionStatus: *mut ovrSessionStatus)
      -> ovrResult;
-    pub fn ovr_GetEnabledCaps(session: ovrSession) -> ::std::os::raw::c_uint;
-    pub fn ovr_SetEnabledCaps(session: ovrSession,
-                              hmdCaps: ::std::os::raw::c_uint);
-    pub fn ovr_GetTrackingCaps(session: ovrSession) -> ::std::os::raw::c_uint;
-    pub fn ovr_ConfigureTracking(session: ovrSession,
-                                 requestedTrackingCaps:
-                                     ::std::os::raw::c_uint,
-                                 requiredTrackingCaps: ::std::os::raw::c_uint)
-     -> ovrResult;
-    pub fn ovr_RecenterPose(session: ovrSession);
+    pub fn ovr_SetTrackingOriginType(session: ovrSession,
+                                     origin: ovrTrackingOrigin) -> ovrResult;
+    pub fn ovr_GetTrackingOriginType(session: ovrSession)
+     -> ovrTrackingOrigin;
+    pub fn ovr_RecenterTrackingOrigin(session: ovrSession) -> ovrResult;
+    pub fn ovr_ClearShouldRecenterFlag(session: ovrSession);
     pub fn ovr_GetTrackingState(session: ovrSession,
                                 absTime: ::std::os::raw::c_double,
                                 latencyMarker: ovrBool) -> ovrTrackingState;
+    pub fn ovr_GetTrackerPose(session: ovrSession,
+                              trackerPoseIndex: ::std::os::raw::c_uint)
+     -> ovrTrackerPose;
     pub fn ovr_GetInputState(session: ovrSession,
-                             controllerTypeMask: ::std::os::raw::c_uint,
+                             controllerType: ovrControllerType,
                              inputState: *mut ovrInputState) -> ovrResult;
+    pub fn ovr_GetConnectedControllerTypes(session: ovrSession)
+     -> ::std::os::raw::c_uint;
     pub fn ovr_SetControllerVibration(session: ovrSession,
-                                      controllerTypeMask:
-                                          ::std::os::raw::c_uint,
+                                      controllerType: ovrControllerType,
                                       frequency: ::std::os::raw::c_float,
                                       amplitude: ::std::os::raw::c_float)
      -> ovrResult;
-    pub fn ovr_DestroySwapTextureSet(session: ovrSession,
-                                     textureSet: *mut ovrSwapTextureSet);
+    pub fn ovr_GetTextureSwapChainLength(session: ovrSession,
+                                         chain: ovrTextureSwapChain,
+                                         out_Length:
+                                             *mut ::std::os::raw::c_int)
+     -> ovrResult;
+    pub fn ovr_GetTextureSwapChainCurrentIndex(session: ovrSession,
+                                               chain: ovrTextureSwapChain,
+                                               out_Index:
+                                                   *mut ::std::os::raw::c_int)
+     -> ovrResult;
+    pub fn ovr_GetTextureSwapChainDesc(session: ovrSession,
+                                       chain: ovrTextureSwapChain,
+                                       out_Desc: *mut ovrTextureSwapChainDesc)
+     -> ovrResult;
+    pub fn ovr_CommitTextureSwapChain(session: ovrSession,
+                                      chain: ovrTextureSwapChain)
+     -> ovrResult;
+    pub fn ovr_DestroyTextureSwapChain(session: ovrSession,
+                                       chain: ovrTextureSwapChain);
     pub fn ovr_DestroyMirrorTexture(session: ovrSession,
-                                    mirrorTexture: *mut ovrTexture);
+                                    mirrorTexture: ovrMirrorTexture);
     pub fn ovr_GetFovTextureSize(session: ovrSession, eye: ovrEyeType,
                                  fov: ovrFovPort,
                                  pixelsPerDisplayPixel:
@@ -951,8 +993,6 @@ extern "C" {
                                        frameIndex: ::std::os::raw::c_longlong)
      -> ::std::os::raw::c_double;
     pub fn ovr_GetTimeInSeconds() -> ::std::os::raw::c_double;
-    pub fn ovr_ResetBackOfHeadTracking(session: ovrSession);
-    pub fn ovr_ResetMulticameraTracking(session: ovrSession);
     pub fn ovr_GetBool(session: ovrSession,
                        propertyName: *const ::std::os::raw::c_char,
                        defaultVal: ovrBool) -> ovrBool;
@@ -989,7 +1029,8 @@ extern "C" {
     pub fn ovr_SetString(session: ovrSession,
                          propertyName: *const ::std::os::raw::c_char,
                          value: *const ::std::os::raw::c_char) -> ovrBool;
-    pub fn ovr_Detect(timeoutMsec: ::std::os::raw::c_int) -> ovrDetectResult;
+    pub fn ovr_Detect(timeoutMilliseconds: ::std::os::raw::c_int)
+     -> ovrDetectResult;
     pub fn ovrMatrix4f_Projection(fov: ovrFovPort,
                                   znear: ::std::os::raw::c_float,
                                   zfar: ::std::os::raw::c_float,
@@ -1003,27 +1044,19 @@ extern "C" {
                                           orthoScale: ovrVector2f,
                                           orthoDistance:
                                               ::std::os::raw::c_float,
-                                          hmdToEyeViewOffsetX:
+                                          HmdToEyeOffsetX:
                                               ::std::os::raw::c_float)
      -> ovrMatrix4f;
     pub fn ovr_CalcEyePoses(headPose: ovrPosef,
-                            hmdToEyeViewOffset: *mut ovrVector3f,
+                            HmdToEyeOffset: *mut ovrVector3f,
                             outEyePoses: *mut ovrPosef);
     pub fn ovr_GetEyePoses(session: ovrSession,
                            frameIndex: ::std::os::raw::c_longlong,
                            latencyMarker: ovrBool,
-                           hmdToEyeViewOffset: *mut ovrVector3f,
+                           HmdToEyeOffset: *mut ovrVector3f,
                            outEyePoses: *mut ovrPosef,
-                           outHmdTrackingState: *mut ovrTrackingState);
-    pub fn ovr_CreateSwapTextureSetGL(session: ovrSession, format: GLuint,
-                                      width: ::std::os::raw::c_int,
-                                      height: ::std::os::raw::c_int,
-                                      outTextureSet:
-                                          *mut *mut ovrSwapTextureSet)
-     -> ovrResult;
-    pub fn ovr_CreateMirrorTextureGL(session: ovrSession, format: GLuint,
-                                     width: ::std::os::raw::c_int,
-                                     height: ::std::os::raw::c_int,
-                                     outMirrorTexture: *mut *mut ovrTexture)
-     -> ovrResult;
+                           outSensorSampleTime:
+                               *mut ::std::os::raw::c_double);
+    pub fn ovrPosef_FlipHandedness(inPose: *const ovrPosef,
+                                   outPose: *mut ovrPosef);
 }
