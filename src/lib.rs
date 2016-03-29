@@ -42,7 +42,6 @@ impl From<i32> for OvrError {
     }
 }
 
-
 pub const EYES: [ovrEyeType; 2] = [
     Enum_ovrEyeType_::ovrEye_Left,
     Enum_ovrEyeType_::ovrEye_Right
@@ -224,6 +223,37 @@ impl GlTextureSwapChain {
     }
 }
 
+#[derive(Default)]
+pub struct SessionStatus {
+    status: ovrSessionStatus
+}
+
+impl SessionStatus {
+    pub fn is_visible(&self) -> bool {
+        self.status.IsVisible != 0
+    }
+
+    pub fn hmd_present(&self) -> bool {
+        self.status.HmdPresent != 0
+    }
+
+    pub fn hmd_mounted(&self) -> bool {
+        self.status.HmdMounted != 0
+    }
+
+    pub fn display_lost(&self) -> bool {
+        self.status.DisplayLost != 0
+    }
+
+    pub fn should_quit(&self) -> bool {
+        self.status.ShouldQuit != 0
+    }
+
+    pub fn should_recenter(&self) -> bool {
+        self.status.ShouldRecenter != 0
+    }
+}
+
 /// Session is the main interaction point for the api.
 pub struct Session {
     session:    ovrSession
@@ -372,6 +402,26 @@ impl Session {
             }
         }
     }
+
+    pub fn status(&self) -> Result<SessionStatus, OvrError> {
+        unsafe {
+            let mut status = mem::zeroed();
+            let result = ovr_GetSessionStatus(self.session, &mut status);
+            if result >= 0 {
+                Ok(SessionStatus {
+                    status: status
+                })
+            } else {
+                Err(result.into())
+            }
+        }
+    }
+
+    pub fn recenter_tracking_origin(&self) {
+        unsafe {
+            ovr_RecenterTrackingOrigin(self.session);
+        }
+    }
 }
 
 impl Drop for Session {
@@ -470,20 +520,25 @@ mod tests {
     use super::*;
 
     #[test]
-    fn init() {
+    fn detect() {
         let detect_result = detect(1000);
         assert!(detect_result.is_oculus_service_running());
         assert!(detect_result.is_hmd_connected());
+    }
+
+    #[test]
+    fn basic_flow() {
 
         initialize().expect("init ok");
 
         let session = create().expect("create hmd");
 
         let _desc = session.get_hmd_desc();
-        // println!("--> {} {}", desc.product_name(), desc.manufacturer());
-        // assert!(false);
 
-        // let swap_set = session.create_swap_texture_set_gl(0, 512, 512);
+        // Fake main loop
+        for i in 0..10 {
+            let status = session.status();
+        }
 
         shutdown();
     }
