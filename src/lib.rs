@@ -362,7 +362,7 @@ impl Session {
                     mem::transmute(&desc.desc),
                     &mut texture);
 
-            if result > 0 {
+            if result >= 0 {
                 Ok(GlMirrorTexture {
                     session: self.session,
                     texture: texture as ovrMirrorTexture
@@ -420,6 +420,12 @@ impl Session {
     pub fn recenter_tracking_origin(&self) {
         unsafe {
             ovr_RecenterTrackingOrigin(self.session);
+        }
+    }
+
+    pub fn set_int(&self, property_name: *const i8, value: i32) -> bool {
+        unsafe {
+            ovr_SetInt(self.session, property_name, value) == 1
         }
     }
 }
@@ -488,6 +494,12 @@ pub fn calc_eye_poses(head_pose: ovrPosef, view_offset: [ovrVector3f; 2]) -> [ov
         let mut eye_poses: [ovrPosef; 2] = mem::uninitialized();
         ovr_CalcEyePoses(head_pose, view_offset.as_mut_ptr(), eye_poses.as_mut_ptr());
         eye_poses
+    }
+}
+
+pub fn matrix4_projection(fov: ovrFovPort, near: f32, far: f32, flags: u32) -> ovrMatrix4f {
+    unsafe {
+        ovrMatrix4f_Projection(fov, near, far, flags)
     }
 }
 
